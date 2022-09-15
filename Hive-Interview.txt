@@ -1,0 +1,20 @@
+Que 1.Difference b/w bucketing and partitioning
+ANS-Similarity:both works on the concept of dividing a dataset into parts and scan only required dataset and leave other part of dataset
+  First  Differences:-->>Each partition is a folder and each bucket is a file
+suppose we have a order table where one column is state and there are values like US,UK,US,Australia,US,UK,INDIA etc
+so in this case if we have to select from this table where state ='' then we will go for partitioning on state column bcz there are less distinct value for state column then folder will bw created for each state like one folder will be created for US and one folder wil be created for UK like this for other state also thus 
+number of partition is eqaul to distinct value in column
+and 
+if we have to select * from table where id=''
+in this case we will go for bucketing with a fixed number of bucket like we can give bucket=4 or bucket=8 etc
+bcz if we go with partitioning in this case then we will end up eith millions of partiton which will reduce the perfomance of processing since there are millions of distinct values in id column.
+thus whenever cardinality of column is high then go with bucket 
+cardinality means number of distinct values
+
+second diference -->>>partition is logic based means we divide our data on the basis of different state  UK data will go in one folder,US data will go second folder 
+But bucket is not logic based its based on some hash function 
+
+
+Que 2-->> 
+
+   

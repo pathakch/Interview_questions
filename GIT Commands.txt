@@ -1,0 +1,19 @@
+1. $git branch -v :shows branch name,last commit hash and commit messages
+2. $git branch --merged:shows which branches has been merged 
+3. $ git branch --no-merged:shows which branches have not been merged
+4. $git branch -d branch_name:deletes given branch  
+5. $ rm -rf .git:removes .git file from a folder so that the folder will not remain git repository.
+6. $ git remote :to check whether we r on remote directory or not 
+7. $ git remote -v:to check whether we r on remote directory or not
+8. $ git remote add origin https://github.com/pathakch/Sample_Repo.git:
+
+Then Run this command 
+ckp43_000@cpc MINGW64 /d/GIT (master)
+   $ git remote -v
+     origin  https://github.com/pathakch/Sample_Repo.git (fetch)
+     origin  https://github.com/pathakch/Sample_Repo.git (push)
+
+9. $ git push origin branch_name(bugfix):pushesh the new branch on remote git repo.
+10.$ git push origin bugfix:mybugfix  => will push new branch named bugfix with a different name "mybugfix"
+11.$ git push -d origin branch_name :deletes branches from remote  repository
+12.$ git merge branch_name :merge other branches with master(give this command when u r on master branch but, not necessary,i think)

@@ -41,8 +41,6 @@ values(9,600,'2022-01-03',3000);
 
 COMMON TABLE EXPRESSION
 
-
-
 with first_visit as (
 select customer_id,min(order_date) as first_visit from customer_orders group by customer_id )
 ,visit_flag as
@@ -54,35 +52,560 @@ inner join first_visit fv on co.customer_id=fv.customer_id order by order_id)
 group by order_date)
 select new_customers,repeat_customers from final_query;
 
-
-with first_visit as (
-select customer_id,min(order_date) as first_visit from customer_orders group by customer_id )
-,visit_flag as (select co.order_date,order_account,fv.first_visit,case when co.order_date=fv.first_visit then 1 else 0 end as first_visit_flag,
+CORRECT FINAL QUERY
+with first_visit as (select customer_id,min(order_date) as first_visit from customer_orders group by customer_id)
+,flag as (select co.customer_id,co.order_date,co.order_account,fv.first_visit,case when co.order_date=fv.first_visit then 1 else 0 end as first_visit_flag,
 case when co.order_date!=fv.first_visit then 1 else 0 end as repeat_visit_flag 
 from customer_orders co
 inner join first_visit fv on co.customer_id=fv.customer_id order by order_id)
-select order_date,sum(first_visit_flag) as new_customers,sum(repeat_visit_flag) as repeat_customers,
-case when first_visit_flag=1 then sum(order_account) end as new_revenue,
-case when repeat_visit_flag=1 then sum(order_account) end as old_revenue from visit_flag 
-group by order_date;
+,revenue as (select order_date,first_visit_flag,repeat_visit_flag,case when first_visit_flag=1 then order_account end as f_indv_revenue,
+case when repeat_visit_flag=1 then order_account end as r_indv_revenue from flag order by order_date)
+select order_date,sum(first_visit_flag) as new_customers,sum(repeat_visit_flag) as repeat_customers,sum(f_indv_revenue),sum(r_indv_revenue) 
+from revenue group by order_date order by order_date;
 
-select new_customers,repeat_customers from final_query;
+Q.3.
+solution:
+with ct1 as (select name,floor,count(1),
+rank() over(partition by floor order by count(1) desc) as rnk 
+from entries group by name,floor),
+ct2 as (select name,floor as most_visited_floor from ct1 where rnk=1),
+ct3 as (select name,count(1) as no_of_visits from entries group by name),
+ct4 as (select name,resources from entries group by name)
+select ct2.name,ct2.most_visited_floor,ct3.no_of_visits,ct4.resources from ct2
+inner join ct3 on ct2.name=ct3.name
+inner join ct4 on ct4.name=ct3.name;
+
+Date Function --which do not work in sql workbench
+date functions
+1.datepart
+2.dateadd
+3.datediff
+
+q.4.find date of nth sunday from a given date
+select adddate(adddate('2022-01-01',8-dayofweek('2022-01-01')),14) as expected_date;
+
+ques.5. pareto principle-20/80% rules based problems
+
+qes.6. personid with friend's score more than 100
+sol: with ct1 as (select f.personid,f.frinedid,p.score from friend f
+inner join person p
+on f.frinedid=p.personid),
+ct2 as (select personid,sum(score) as friend_score,count(frinedid) as no_of_friends from ct1 group by personid ),
+ct3 as (select personid,friend_score,no_of_friends from ct2 where friend_score>100)
+select pr.name,final.personid,final.friend_score,final.no_of_friends from ct3 final
+inner join person pr on pr.personid=final.personid 
+
+Que.8
+solution:
+with ct1 as (select first_player as player_id,first_score as score from matches
+union
+select second_player as player_id,second_score as scocre from matches),
+ct2 as (select player_id,sum(score) as score from ct1 group by player_id),
+ct3 as (select t1.player_id,t1.score,t2.group_id from ct2 t1
+inner join players t2
+on t1.player_id=t2.player_id),
+ct4 as (select player_id,score,group_id,row_number() over(partition by group_id order by score desc) as rnk from ct3)
+select player_id,score,group_id from ct4 where rnk=1
+
+NEW CONCEPT : 
+with ct1 as (select *,count(1) over(partition by username) as activities,
+row_number() over(partition by username) as rnk
+from UserActivity )
+select * from ct1 where activities=1 or rnk=2
 
 
-with first_visit as (
-select customer_id,min(order_date) as first_visit from customer_orders group by customer_id )
-,visit_flag as (select co.order_date,order_account,fv.first_visit,case when co.order_date=fv.first_visit then 1 else 0 end as first_visit_flag,
-case when co.order_date!=fv.first_visit then 1 else 0 end as repeat_visit_flag 
-from customer_orders co
-inner join first_visit fv on co.customer_id=fv.customer_id order by order_id)
-select order_date,sum(first_visit_flag) as new_customers,sum(repeat_visit_flag) as repeat_customers,order_account
-from visit_flag 
-group by order_date;
+SQL LEAD/LAG FUNCTIONS 
+Table:
+seat_no,is_empty
+1	N
+2	Y
+3	N
+4	Y
+5	Y
+6	Y
+7	N
+8	Y
+9	Y
+10	Y
+11	Y
+12	N
+13	Y
+14	Y
+
+1st method:
+with ct1 as (select seat_no,is_empty,
+lag(is_empty,1) over(order by seat_no) as prev_1,--gives previous one row for column 'is_empty'
+lag(is_empty,2) over(order by seat_no) as prev_2,--gives previous two rows value for the column 'is_empty'
+lead(is_empty,1) over(order by seat_no) as after_1,-- gives one row after or the column 'is_empty'
+lead(is_empty,2) over(order by seat_no) as after_2 from bms),
+ct2 as (select seat_no,
+case when (prev_1='Y' and after_1='Y')
+or (prev_1='Y' and prev_2='Y') or (after_1='Y' and after_2='Y') 
+then seat_no end as new_is_empty from ct1 where is_empty='Y')
+select seat_no,new_is_empty from ct2 where new_is_empty is not null
+
+2nd method:
+By advance aggregation functions 
+select * from 
+(select *,
+sum(case when is_empty='Y' then 1 else 0 end) over(order by seat_no rows between 2 preceding and current row ) as prev_2,
+sum(case when is_empty='Y' then 1 else 0 end) over(order by seat_no rows between current row and 2 following ) as next_2,
+sum(case when is_empty='Y' then 1 else 0 end) over(order by seat_no rows between 1 preceding and 1 following) as prev_next_1
+from bms) a
+where a.prev_2=3 or a.next_2=3 or prev_next_1=3
+Output:
+seat_no	is_empty	prev_2	next_2	prev_next_1
+4	      Y	          2	    3	          2
+5	      Y	          2	    2	          3
+6	      Y	          3	    2	          2
+8	      Y	          2	    3	          2
+9	      Y	          2	    3	          3
+10	      Y	          3	    2	          3
+11	      Y	          3		2             2
+Method 3:
+with ct1 as (select *,row_number() over(order by seat_no) as rnk,seat_no-row_number() over(order by seat_no) as diff
+from 
+bms where is_empty='Y'),
+ct2 as (select diff,count(diff) from ct1 group by diff having count(diff)>=3)
+select * from ct1 where diff in (select diff from ct2)
+output:
+seat_no,is_empty,rnk,diff
+4	Y	2	2
+5	Y	3	2
+6	Y	4	2
+8	Y	5	3
+9	Y	6	3
+10	Y	7	3
+11	Y	8	3
+
+qusetion.21:
+RECURSIVE COMMON TABLE 
+
+with recursive ct as (
+select distinct store,1 as q_no from stores union all 
+select store,q_no+1 as q_no from ct
+where q_no<4
+),
+ct1 as (select store,concat('Q',q_no) as new_q from ct)
+select c.* from ct1 c
+left join stores s on c.store=s.store and c.new_q=s.quarter where s.store is null order by c.store
+output:
+	store	new_q
+	S1	     Q3
+	S2	     Q2
+	S3	     Q4
+	
+by cross join :
+with ct1 as (select distinct s1.store,s2.quarter 
+from stores s1,stores s2 order by s1.store)
+select c.* from ct1 c 
+left join stores s on c.store=s.store and c.quarter=s.quarter where s.store is null
+
+ques:22.find student id with same marks in both subject chemistry and physics  
+TABLE
+student_id,subject,marks
+1	Chemistry	91
+1	Physics	    91
+2	Chemistry	80
+2	Physics	    90
+3	Chemistry	80
+4	Chemistry	71
+4	Physics	    54
+
+Method :1 (Power of group by and having)
+select student_id from exams where subject in ('Chemistry','Physics')  
+group by student_id 
+having count(distinct subject)=2 and count(distinct marks)=1
+
+Method:2 (By self join)
+with ct1 as (select * from exams where subject='Chemistry'), 
+ct2 as (select * from exams where subject='Physics')
+select * from ct1 c1 inner join ct2 c2 
+on c1.student_id=c2.student_id and c1.marks=c2.marks
+
+ques: 23: Select cities where cases are increasing continuously
+Table:
+city,days,cases
+DELHI	2022-01-01	100
+DELHI	2022-01-02	200
+DELHI	2022-01-03	300
+MUMBAI	2022-01-01	100
+MUMBAI	2022-01-02	100
+MUMBAI	2022-01-03	300
+CHENNAI	2022-01-01	100
+CHENNAI	2022-01-02	200
+CHENNAI	2022-01-03	150
+BANGALORE	2022-01-01	100
+BANGALORE	2022-01-02	300
+BANGALORE	2022-01-03	200
+BANGALORE	2022-01-04	400
+Solution :(Using lag)
+with ct as (select *,
+lag(cases) over(partition by city order by days) as new_case,
+cases-(lag(cases) over(partition by city order by days)) as diff,
+case when  (cases-(lag(cases) over(partition by city order by days)))>0 or
+(cases-(lag(cases) over(partition by city order by days))) is null then 0 else 1 end as flag 
+ from covid)
+select *,count(distinct flag) from ct group by city having count(distinct flag)=1
+Output :
+	city	days	cases	new_case	diff	flag	count(distinct flag)
+	DELHI	2022-01-01	100		NULL	 NULL          0	1
+
+Method :2:(can be solved by using two diffrent ranks one on days and other on cases then take the differance of both rank rank )
+
+ques :24. find companies in which at least two users speaks both language english and german 
+Table :
+Company_id,User_id,Language
+1	1	English
+1	1	German
+1	2	English
+1	3	German
+1	3	English
+1	4	English
+2	5	English
+2	5	German
+2	5	Spanish
+2	6	German
+2	6	Spanish
+2	7	English
+
+solution:
+Method :1 
+select company_id,count(1) as no_of_users from (
+select company_id,user_id,count(1) from company_users where language in ('English','German')
+group by company_id,user_id having count(1)=2) a group by company_id having count(1)>=2
+Method :2
+with ct as (select * from company_users where language in ('English','German')),
+ct1 as (select distinct user_id,company_id,count(user_id) as cnt,
+case when count(user_id)=2 then 1 else 0 end as flag  from ct group by user_id)
+select company_id from ct1 group by company_id having sum(flag)=2
+
+Ques: 25. find no of products and list of products for customers under their budgets 
+(in clash select less costly products)
+Table customer_budget:
+customer_id,budget
+100	400
+200	800
+300	1500
+Table products:
+product_id,cost
+P1	200
+P2	300
+P3	500
+P4	800
+
+solution:(with string aggregation and running cost function )
+with rng_cost as (select *,sum(cost) over(order by cost) as rng_cost from products),
+ct1 as (select * from customer_budget cb left join rng_cost rc on rc.rng_cost<cb.budget)
+select customer_id,budget,count(1) as no_of_products,group_concat(product_id,',') as products
+from ct1 group by customer_id,budget
+output:
+	customer_id	budget	no_of_products	products
+	100	          400	1	             P1,
+	200	          800	2	             P2,,P1,
+	300	          1500	3	             P3,,P2,,P1,
+
+ques:26: find sms exchanged between each person:
+Table :
+	sms_date	sender	receiver	sms_no
+	2020-04-01	Avinash	Vibhor	      10
+	2020-04-01	Vibhor	Avinash	      20
+	2020-04-01	Avinash	Pawan	      30
+	2020-04-01	Pawan	Avinash	      20
+	2020-04-01	Vibhor	Pawan	      5
+	2020-04-01	Pawan	Vibhor	      8
+	2020-04-01	Vibhor	Deepak	      50
+Solution :(by horizontal sorting)
+with ct1 as (select *,
+case when sender<receiver then sender else receiver end as p1,
+case when sender>receiver then sender else receiver end as p2 from subscriber)
+select sms_date,p1,p2,sum(sms_no) from ct1 group by sms_date,p1,p2
+Output:
+	sms_date	p1	    p2	    sum(sms_no)
+	2020-04-01	Avinash	Vibhor	30
+	2020-04-01	Avinash	Pawan	50
+	2020-04-01	Pawan	Vibhor	13
+	2020-04-01	Deepak	Vibhor	50	
+ques:27.Q.1 :Find 2nd highest and 2nd lowest marks for each subjects 
+Table Students:
+	studentid	studentname	subject	marks	testid	testdate
+	2	         Max Ruin	Subject1	63	1	2022-01-02
+	3	         Arnold	    Subject1	95	1	2022-01-02
+	4	         Krish Star	Subject1	61	1	2022-01-02
+	5	         John Mike	Subject1	91	1	2022-01-02
+	4	         Krish Star	Subject2	71	1	2022-01-02
+	3	         Arnold	    Subject2	32	1	2022-01-02
+	5	         John Mike	Subject2	61	2	2022-11-02
+	1	         John Deo	Subject2	60	1	2022-01-02
+	2	         Max Ruin	Subject2	84	1	2022-01-02
+	2	         Max Ruin	Subject3	29	3	2022-01-03
+	5	         John Mike	Subject3	98	2	2022-11-02	
+	
+Solution : 1:
+with ct as (select *,rank() over(partition by subject order by marks) as rnk1 from students),
+ct1 as (select subject,max(rnk1)-1 as rnk2 from ct group by subject),
+ct2 as (select c.subject,c.marks as second_highest,c.rnk1,c1.rnk2 from ct c 
+inner join ct1 c1 on c.subject=c1.subject and c.rnk1=c1.rnk2),
+ct3 as (select subject,case when rnk1=2 then marks else null end as second_lowest from ct )
+select c2.subject,c3.second_lowest,c2.second_highest 
+from ct3 c3 inner join ct2 c2 on c3.subject=c2.subject 
+where c3.second_lowest is not null
+output:
+	subject	second_lowest	second_highest
+	Subject1	63	           91
+	Subject2	60	           71
+	Subject3	98	           29
+
+Solution :2 (using rank once in ascending and once in descending order):
+with rank_ct as (select *, rank() over(partition by subject order by marks asc) asc_rank,
+rank() over(partition by subject order by marks desc) desc_rank from students)
+select subject,
+sum(case when asc_rank=2 then marks else null end) as second_lowest_mark,
+sum(case when desc_rank=2 then marks else null end) as second_highest_mark
+from rank_ct group by subject
+
+output:
+	subject	second_lowest_mark	second_highest_mark
+	Subject1	63	                91
+	Subject2	60	                71
+	Subject3	98	                29	
+Q.2: find marks has been increased or decreased for each student in next test
+solution :
+select *,
+case when marks>prev_marks then 'increased'
+when marks<prev_marks then 'decreased' else null end as def from 
+(select *,
+lag(marks) over(partition by studentid order by testdate,subject) as prev_marks
+from students order by studentid,testdate) A
+Output:
+	studentid	studentname	subject	marks	testid	testdate	prev_marks	def
+	1	        John Deo	Subject2	60	    1	2022-01-02		
+	2	        Max Ruin	Subject1	63	    1	2022-01-02		
+	2	        Max Ruin	Subject2	84	    1	2022-01-02	  63	     increased
+	2	        Max Ruin	Subject3	29	    3	2022-01-03	  84	     decreased
+	3	        Arnold	    Subject1	95	    1	2022-01-02	  	     
+	3	        Arnold	    Subject2	32	    1	2022-01-02	  95	     decreased
+	4	        Krish Star	Subject1	61	    1	2022-01-02	  	     
+	4	        Krish Star	Subject2	71	    1	2022-01-02	  61	     increased
+	5	        John Mike	Subject1	91	    1	2022-01-02	  	     
+	5	        John Mike	Subject2	61	    2	2022-11-02	  91	     decreased
+	5	        John Mike	Subject3	98	    2	2022-11-02	  61	     increased
+	
+Ques:28: brilliant sql question : find the largest order by value by each sales person and display order details
+(without windows function,cte,temp_table,sub query):
+Table:
+	order_number	order_date	cust_id	salesperson_id	amount
+	30	            1995-07-14	  9	        1	        460
+	10	            1996-08-02	  4	        2	        540
+	40	            1998-01-29	  7	        2	        2400
+	50	            1998-02-03	  6	        7	        600
+	60	            1998-03-02	  6	        7	        720
+	70	            1998-05-06	  9	        7	        150
+	20	            1999-01-30	  4	        8	        1800
+Solution:(By self join)	:
+select t1.order_number,t1.order_date,t1.cust_id,
+t1.salesperson_id,t1.amount as largest_amount
+from int_orders t1 inner join int_orders t2 
+on t1.salesperson_id=t2.salesperson_id 
+where t1.amount>=t2.amount group by t1.salesperson_id
+Output:
+	order_number	order_date	cust_id	salesperson_id	largest_amount
+	30	           1995-07-14	   9	           1	460
+	40	           1998-01-29	   7	           2	2400
+	60	           1998-03-02	   6	           7	720
+	20	           1999-01-30	   4	           8	1800
+	
+Ques:29: find login and logout time and number of sessions(logged in)
+Table : event_status:
+	event_time	status
+	10:01	     on
+	10:02	     on
+	10:03	     on
+	10:04	     off
+	10:07	     on
+	10:08	     on
+	10:09	     off
+	10:11	     on
+	10:12	     off	
+Solution: (creating a group key concept and lag function)
+with ct1 as (select *,
+sum(case when status='on' and prev_status='off' then 1 else 0 end)
+over(order by event_time) as group_key from
+(select *,
+lag(status,1,status) over(order by event_time) as prev_status
+from event_status) A)
+select min(event_time) as login,max(event_time) as logout,count(status)-1
+from ct1 group by group_key order by event_time
+Output:
+	login	logout	count(status)-1
+	10:01	10:04	3
+	10:07	10:09	2
+	10:11	10:12	1	
+	
+Ques:30:expected output table is below (tough problem of pivot table)
+Table:players_location:
+	name	city
+	Sachin	Mumbai
+	Virat	Delhi
+	Rahul	Bangalore
+	Rohit	Mumbai
+	Mayank	Bangalore
+solution:
+select 
+max(case when city='Bangalore' then name end) as Bangalore,
+max(Case when city='Delhi' then name end) as Delhi,
+max(case when city='Mumbai' then name end) as Mumbai from
+ (select *,row_number() over(partition by city order by name) as players_group
+from players_location) A
+group by players_group
+Output:
+	Bangalore	Delhi	Mumbai
+	Mayank	    Virat	Rohit
+	Rahul		        Sachin	
+	
+Que: 31. Find meadian of salary for each company
+Table : employee:
+	emp_id	company	salary
+	1	       A	2341
+	2	       A	341
+	3	       A	15
+	4	       A	15314
+	5	       A	451
+	6	       A	513
+	7	       B	15
+	8	       B	13
+	9	       B	1154
+	10	       B	1345
+	11	       B	1221
+	12	       B	234
+	13	       C	2345
+	14	       C	2645
+	15	       C	2645
+	16	       C	2652
+	17	       C	65	
+Solution (cool method to find meadian)
+with ct1 as (select *,row_number() over(partition by company order by salary) rnk,
+count(1) over(partition by company ) as cnt,
+count(1) over(partition by company )/2 as cnt1,
+count(1) over(partition by company )/2+1 as cnt2
+from employee),
+ct2 as (select * from ct1 where rnk between cnt1 and cnt2)
+select company,avg(salary)
+from ct2 group by company
+Output:
+	company	avg(salary)
+	A	     482.0000
+	B	     694.0000
+	C	     2645.0000	
+	
+Que: 32: expected output table :
+    	time	buy_qty	sell_qty
+	     10	     10	      10
+	     14	     5	      5
+	     14	     15	      null
+Table 1. :
+buy:
+	Date	Time	Qty	per_share_price	total_value
+	15	     10	     10	          10	100
+	15	     14	     20	          10	200	
+Table 2.
+sell
+	Date	Time	Qty	per_share_price	total_value
+	15	    15	    15	    20	           300	
+	
+solution: (used functions/methods:ifnull,runnin_sum and running_sum till previous row)
+with ct1 as (select buy.time,buy.qty as buy_qty,sell.qty as sell_qty,
+sum(buy.qty) over(order by buy.time) as r_buy_qty,
+ifnull(sum(buy.qty) over(order by buy.time rows between unbounded preceding and 1 preceding),0) as prev_buy_qty
+from buy inner join sell on buy.date=sell.date )
+select time,
+case when sell_qty>=r_buy_qty then buy_qty
+when sell_qty<r_buy_qty then (sell_qty-prev_buy_qty) end as buy_qty,
+case when sell_qty>=r_buy_qty then buy_qty
+when sell_qty<r_buy_qty then (sell_qty-prev_buy_qty) end as sell_qty from ct1 
+union all 
+select time,(r_buy_qty-sell_qty) as buy_qty,
+'null' as sell_qty 
+from ct1 where sell_qty<r_buy_qty 
+
+Ques:33. find third highest salary for each department , 
+if employee is less than three in any department then find the lowest salary.
+Table:
+emp:
+	emp_id	emp_name	salary	manager_id	emp_age	dep_id	dep_name	gender
+	1	     Ankit	     14300	       4	  39	100	    Analytics	Female
+	2	     Mohit	     14000	       5	  48	200	    IT	        Male
+	3	     Vikas	     12100	       4	  37	100	    Analytics	Female
+	4	     Rohit	     7260	       2	  16	100	    Analytics	Female
+	5	     Mudit	     15000	       6	  55	200	    IT	        Male
+	6	     Agam	     15600	       2	  14	200	    IT	        Male
+	7	     Sanjay	     12000	       2	  13	200	    IT	        Male
+	8	     Ashish	     7200	       2	  12	200	    IT	        Male
+	9	     Mukesh	     7000	       6	  51	300	    HR	        Male
+	10	     Rakesh	     8000	       6	  50	300	    HR	        Male
+	11	     Akhil	     4000	       1	  31	500	    Ops	        Male
+Solution :(use rank function and count() over where count is less than there rank and count will be equal thus got lowest salary for count<3)
+with ct as (select *,rank() over(partition by dep_name order by salary desc) as rnk,
+count(1) over(partition by dep_name) as cnt
+ from emp)
+ select * from ct where rnk=3 or (cnt<3 and cnt=rnk)
+Output:
+	emp_id	emp_name	salary	manager_id	emp_age	dep_id	dep_name	gender	rnk	cnt
+	4	     Rohit	     7260	   2	     16	     100	Analytics	Female	3	3
+	9	     Mukesh	     7000	   6	     51	     300	HR	        Male	2	2
+	2	     Mohit	     14000	   5	     48	     200	IT	        Male	3	5
+	11	     Akhil	     4000	   1	     31	     500	Ops	        Male	1	1 
+	
+	
+Question:34.find the 3 consecutive rows which have no of people more than 100
+Table stadium
+	id	visit_date	no_of_people
+	1	2017-07-01	10
+	2	2017-07-02	109
+	3	2017-07-03	150
+	4	2017-07-04	99
+	5	2017-07-05	145
+	6	2017-07-06	1455
+	7	2017-07-07	199
+	8	2017-07-08	188
+
+Solution:
+Method 1.(using preceding and foloowing functions )
+with ct as (select *,
+sum(case when no_of_people>=100 then 1 else 0 end) over(order by id rows between 2 preceding and current row)
+as prev_2_current,
+sum(case when no_of_people>=100 then 1 else 0 end) over(order by id rows between current row and 2 following) 
+as following_2_current,
+sum(case when no_of_people>=100 then 1 else 0 end) over(order by id rows between 1 preceding and 1 following) 
+as preceding_current_following 
+from stadium)
+select * from ct 
+where prev_2_current=3 
+or    following_2_current=3 
+or    preceding_current_following=3
+output:
+	id	visit_date	no_of_people	prev_2_current	following_2_current	preceding_current_following
+	5	2017-07-05	145	                       2	            3	                     2
+	6	2017-07-06	1455                       2	            3	                     3
+	7	2017-07-07	199	                       3	            2	                     3
+	8	2017-07-08	188	                       3	            1	                     2
+
+Method 2.(if rows are consecutive then the difference of unique id and rank will be same as 2 in this case)
+with ct as (select *,rank() over(order by visit_date) as rnk,
+(id-rank() over(order by visit_date)) as grp
+from stadium
+where no_of_people>=100)
+select * from ct where grp=(select grp from ct group by grp having count(1)>=3)	
+Output :
+	id	visit_date	no_of_people	rnk	grp
+	5	2017-07-05	145	           3	2
+	6	2017-07-06	1455           4	2
+	7	2017-07-07	199	           5	2
+	8	2017-07-08	188	           6	2
 
 
-git remote add origin https://github.com/pathakch/python_programming.git
-https://github.com/pathakch/Basic_Coding.git
 
-remote: Support for password authentication was removed on August 13, 2021.
-remote: Please see https://docs.github.com/en/get-started/getting-started-with-git/about-remote-repositories#cloning-with-https-urls for information on currently recommended modes of authentication.
+
+
+
 

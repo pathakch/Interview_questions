@@ -1,3 +1,6 @@
+This document contains multiple SQL tricky questions which can be asked 
+in product based company interviw
+
 Deleting duplicate records from table using different ways 
 METHOD 1 : USING MAX(ID) QUERY IF ID IN PRIMARY KEY IN TABLE 
 select * from customer where id not in (select max(id) from customer group by name,age,salary);
@@ -606,6 +609,6 @@ Output :
 
 
 
-
+`
 
 

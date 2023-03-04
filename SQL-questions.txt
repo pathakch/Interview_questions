@@ -1,5 +1,6 @@
 This document contains multiple SQL tricky questions which can be asked 
 in product based company interviw
+Rerence:--->>> You Tube
 
 Deleting duplicate records from table using different ways 
 METHOD 1 : USING MAX(ID) QUERY IF ID IN PRIMARY KEY IN TABLE 

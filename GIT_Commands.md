@@ -19,7 +19,7 @@
 11. `git push -d origin branch_name` : deletes branches from remote  repository
 12. `git merge branch_name` : merge other branches with master(give this command when u r on master branch but, not necessary,i think)
 
-Scenario:1. 
+**Scenario:1.** 
   - suppose we created a repo 'test_repo' with the help of another repo as template, we made some changes in 'test_repo' 
 but now we want to delete those commit history and update this repo with the template repo, Follow below steps.
 ---------------------------------------------------------------------------------------------------------------------------------
@@ -30,7 +30,7 @@ but now we want to delete those commit history and update this repo with the tem
 --------------------------------------------------------------------------------------------------------------------------------
 
 
-Scenario:2. 
+**Scenario:2.**
 - Delete an old commit from main branch or from any branch.Ex:(a->b->c->d) delete commit b ,result should be (a->c->d)
 --------------------------------------------------------------------------------------------------------------------------------
     if we have 
@@ -46,7 +46,7 @@ Scenario:2.
     step. 4 git push -f origin (force push to the branch and it will rewrite old history, force rewrite old history.)
 ---------------------------------------------------------------------------------------------------------------
 
-Scenario:3. 
+**Scenario:3.**
 - Delete all the commits from a branch and push a fresh commit which will delete all the history also
 ---------------------------------------------------------------------------------------------------------------
     if we want to delete all the comit from branch ABC.

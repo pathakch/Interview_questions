@@ -13,13 +13,3 @@ Important AWS services to practice
 5.Amazon Kinesis
 6.Relational database services
 
-Topics
-1.
-2.
-3.
-4.
-5.
-6.
-7.
-8.
-9.
